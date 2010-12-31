@@ -219,6 +219,13 @@ class UnitOfWork implements PropertyChangedListener
     //private $_readOnlyObjects = array();
 
     /**
+     * Map of Entity Class-Names and corresponding IDs that should eager loaded when requested.
+     * 
+     * @var array
+     */
+    private $eagerLoadingEntities = array();
+
+    /**
      * Initializes a new UnitOfWork instance, bound to the given EntityManager.
      *
      * @param Doctrine\ORM\EntityManager $em
@@ -1916,12 +1923,12 @@ class UnitOfWork implements PropertyChangedListener
                                                 ->loadOneToOneEntity($assoc, $entity, null, $associatedId);
                                     } else {
                                         if ($assoc['fetch'] == ClassMetadata::FETCH_EAGER) {
-                                            // TODO: Maybe it could be optimized to do an eager fetch with a JOIN inside
-                                            // the persister instead of this rather unperformant approach.
-                                            $newValue = $this->em->find($assoc['targetEntity'], $associatedId);
-                                        } else {
-                                            $newValue = $this->em->getProxyFactory()->getProxy($assoc['targetEntity'], $associatedId);
+                                            if (!isset($this->eagerLoadingEntities[$assoc['targetEntity']])) {
+                                                $this->eagerLoadingEntities[$assoc['targetEntity']] = array();
+                                            }
+                                            $this->eagerLoadingEntities[$assoc['targetEntity']][] = array_values($associatedId);
                                         }
+                                        $newValue = $this->em->getProxyFactory()->getProxy($assoc['targetEntity'], $associatedId);
                                         // PERF: Inlined & optimized code from UnitOfWork#registerManaged()
                                         $newValueOid = spl_object_hash($newValue);
                                         $this->entityIdentifiers[$newValueOid] = $associatedId;
@@ -1967,6 +1974,22 @@ class UnitOfWork implements PropertyChangedListener
         }
 
         return $entity;
+    }
+
+    /**
+     * @return void
+     */
+    public function triggerEagerLoads()
+    {
+        if (!$this->eagerLoadingEntities) {
+            return;
+        }
+
+        foreach ($this->eagerLoadingEntities AS $entityName => $ids) {
+            $this->getEntityPersister($entityName)->load($ids);
+        }
+
+        $this->eagerLoadingEntities = array();
     }
 
     /**
