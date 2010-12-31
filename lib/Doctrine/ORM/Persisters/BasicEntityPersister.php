@@ -525,11 +525,43 @@ class BasicEntityPersister
     public function load(array $criteria, $entity = null, $assoc = null, array $hints = array(), $lockMode = 0)
     {
         $sql = $this->_getSelectEntitiesSQL($criteria, $assoc, $lockMode);
-        $stmt = $this->_conn->executeQuery($sql, array_values($criteria));
+        list($params, $types) = $this->expandParameters($criteria);
+        $stmt = $this->_conn->executeQuery($sql, $params, $types);
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
         $stmt->closeCursor();
 
         return $this->_createEntity($result, $entity, $hints);
+    }
+
+    /**
+     * Expand the parameters from the given criteria and use the correct binding types if found.
+     *
+     * @param  array $criteria
+     * @return array
+     */
+    private function expandParameters($criteria)
+    {
+        $params = array();
+        $types = array();
+        foreach ($criteria AS $field => $values) {
+            if (isset($this->_class->fieldMappings[$field])) {
+                $type = Type::getType($this->_class->fieldMappings[$field]['type'])->getBindingType();
+            } else {
+                $type = \PDO::PARAM_STR; // default type
+            }
+
+            if (!is_array($values)) {
+                $params[] = $values;
+                $types[] = $type;
+            } else {
+                foreach ($values AS $value) {
+                    $params[] = $value;
+                    $types[] = $type;
+                }
+            }
+        }
+
+        return array($params, $types);
     }
 
     /**
@@ -694,7 +726,8 @@ class BasicEntityPersister
     {
         $entities = array();
         $sql = $this->_getSelectEntitiesSQL($criteria);
-        $stmt = $this->_conn->executeQuery($sql, array_values($criteria));
+        list($params, $types) = $this->expandParameters($criteria);
+        $stmt = $this->_conn->executeQuery($sql, $params, $types);
         $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $stmt->closeCursor();
 
@@ -742,7 +775,8 @@ class BasicEntityPersister
         }
 
         $sql = $this->_getSelectEntitiesSQL($criteria, $assoc);
-        $stmt = $this->_conn->executeQuery($sql, array_values($criteria));
+        list($params, $types) = $this->expandParameters($criteria);
+        $stmt = $this->_conn->executeQuery($sql, $params, $types);
         while ($result = $stmt->fetch(PDO::FETCH_ASSOC)) {
             $coll->hydrateAdd($this->_createEntity($result));
         }
@@ -1084,8 +1118,8 @@ class BasicEntityPersister
         $sql = 'SELECT 1 '
              . $this->_platform->appendLockHint($this->getLockTablesSql(), $lockMode)
              . ($conditionSql ? ' WHERE ' . $conditionSql : '') . ' ' . $lockSql;
-        $params = array_values($criteria);
-        $this->_conn->executeQuery($sql, $params);
+        list($params, $types) = $this->expandParameters($criteria);
+        $stmt = $this->_conn->executeQuery($sql, $params, $types);
     }
 
     /**
@@ -1147,7 +1181,11 @@ class BasicEntityPersister
             } else {
                 throw ORMException::unrecognizedField($field);
             }
-            $conditionSql .= ' = ?';
+            if (is_array($value)) {
+                $conditionSql .= ' IN (' . rtrim(str_repeat('?, ', count($value)), ', ') . ')';
+            } else {
+                $conditionSql .= ' = ?';
+            }
         }
         return $conditionSql;
     }
@@ -1169,8 +1207,8 @@ class BasicEntityPersister
         }
 
         $sql = $this->_getSelectEntitiesSQL($criteria, $assoc);
-        $params = array_values($criteria);
-        $stmt = $this->_conn->executeQuery($sql, $params);
+        list($params, $types) = $this->expandParameters($criteria);
+        $stmt = $this->_conn->executeQuery($sql, $params, $types);
         while ($result = $stmt->fetch(PDO::FETCH_ASSOC)) {
             $coll->hydrateAdd($this->_createEntity($result));
         }
