@@ -1922,11 +1922,18 @@ class UnitOfWork implements PropertyChangedListener
                                         $newValue = $this->getEntityPersister($assoc['targetEntity'])
                                                 ->loadOneToOneEntity($assoc, $entity, null, $associatedId);
                                     } else {
-                                        if ($assoc['fetch'] == ClassMetadata::FETCH_EAGER) {
+                                        if ($assoc['fetch'] == ClassMetadata::FETCH_EAGER && isset($hints['deferEagerLoad'])) {
                                             if (!isset($this->eagerLoadingEntities[$assoc['targetEntity']])) {
                                                 $this->eagerLoadingEntities[$assoc['targetEntity']] = array();
                                             }
-                                            $this->eagerLoadingEntities[$assoc['targetEntity']][] = array_values($associatedId);
+
+                                            // TODO: Is there a faster approach?
+                                            $this->eagerLoadingEntities[$assoc['targetEntity']] = array_merge_recursive(
+                                                $this->eagerLoadingEntities[$assoc['targetEntity']],
+                                                array_map(function($id) {
+                                                    return array($id);
+                                                }, $associatedId)
+                                            );
                                         }
                                         $newValue = $this->em->getProxyFactory()->getProxy($assoc['targetEntity'], $associatedId);
                                         // PERF: Inlined & optimized code from UnitOfWork#registerManaged()
@@ -1985,11 +1992,12 @@ class UnitOfWork implements PropertyChangedListener
             return;
         }
 
-        foreach ($this->eagerLoadingEntities AS $entityName => $ids) {
-            $this->getEntityPersister($entityName)->load($ids);
-        }
-
+        $eagerLoadingEntities = $this->eagerLoadingEntities;
         $this->eagerLoadingEntities = array();
+
+        foreach ($eagerLoadingEntities AS $entityName => $ids) {
+            $this->getEntityPersister($entityName)->loadAll($ids);
+        }
     }
 
     /**
