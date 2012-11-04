@@ -59,7 +59,7 @@ class EntityGenerator
     /**
      * @var bool
      */
-    private $backupExisting = true;
+    private $backupExisting = TRUE;
 
     /**
      * The extension to use for written php files
@@ -73,7 +73,7 @@ class EntityGenerator
      *
      * @var boolean
      */
-    private $isNew = true;
+    private $isNew = TRUE;
 
     /**
      * @var array
@@ -104,7 +104,7 @@ class EntityGenerator
      *
      * @var boolean
      */
-    private $generateAnnotations = false;
+    private $generateAnnotations = FALSE;
 
     /**
      * @var string
@@ -116,21 +116,21 @@ class EntityGenerator
      *
      * @var boolean
      */
-    private $generateEntityStubMethods = false;
+    private $generateEntityStubMethods = FALSE;
 
     /**
      * Whether or not to update the entity class if it exists already
      *
      * @var boolean
      */
-    private $updateEntityIfExists = false;
+    private $updateEntityIfExists = FALSE;
 
     /**
      * Whether or not to re-generate entity class if it exists already
      *
      * @var boolean
      */
-    private $regenerateEntityIfExists = false;
+    private $regenerateEntityIfExists = FALSE;
 
     /**
      * @var boolean
@@ -295,7 +295,7 @@ public function __construct()
         $dir = dirname($path);
 
         if ( ! is_dir($dir)) {
-            mkdir($dir, 0777, true);
+            mkdir($dir, 0777, TRUE);
         }
 
         $this->isNew = !file_exists($path) || (file_exists($path) && $this->regenerateEntityIfExists);
@@ -500,14 +500,14 @@ public function __construct()
     private function generateEntityClassName(ClassMetadataInfo $metadata)
     {
         return 'class ' . $this->getClassName($metadata) .
-            ($this->extendsClass() ? ' extends ' . $this->getClassToExtendName() : null);
+            ($this->extendsClass() ? ' extends ' . $this->getClassToExtendName() : NULL);
     }
 
     private function generateEntityBody(ClassMetadataInfo $metadata)
     {
         $fieldMappingProperties = $this->generateEntityFieldMappingProperties($metadata);
         $associationMappingProperties = $this->generateEntityAssociationMappingProperties($metadata);
-        $stubMethods = $this->generateEntityStubMethods ? $this->generateEntityStubMethods($metadata) : null;
+        $stubMethods = $this->generateEntityStubMethods ? $this->generateEntityStubMethods($metadata) : NULL;
         $lifecycleCallbackMethods = $this->generateEntityLifecycleCallbackMethods($metadata);
 
         $code = array();
@@ -562,10 +562,10 @@ public function __construct()
     {
         $tokens = token_get_all($src);
         $lastSeenNamespace = "";
-        $lastSeenClass = false;
+        $lastSeenClass = FALSE;
 
-        $inNamespace = false;
-        $inClass = false;
+        $inNamespace = FALSE;
+        $inClass = FALSE;
 
         for ($i = 0; $i < count($tokens); $i++) {
             $token = $tokens[$i];
@@ -577,12 +577,12 @@ public function __construct()
                 if ($token[0] == T_NS_SEPARATOR || $token[0] == T_STRING) {
                     $lastSeenNamespace .= $token[1];
                 } elseif (is_string($token) && in_array($token, array(';', '{'))) {
-                    $inNamespace = false;
+                    $inNamespace = FALSE;
                 }
             }
 
             if ($inClass) {
-                $inClass = false;
+                $inClass = FALSE;
                 $lastSeenClass = $lastSeenNamespace . ($lastSeenNamespace ? '\\' : '') . $token[1];
                 $this->staticReflection[$lastSeenClass]['properties'] = array();
                 $this->staticReflection[$lastSeenClass]['methods'] = array();
@@ -590,9 +590,9 @@ public function __construct()
 
             if ($token[0] == T_NAMESPACE) {
                 $lastSeenNamespace = "";
-                $inNamespace = true;
+                $inNamespace = TRUE;
             } elseif ($token[0] == T_CLASS) {
-                $inClass = true;
+                $inClass = TRUE;
             } elseif ($token[0] == T_FUNCTION) {
                 if ($tokens[$i+2][0] == T_STRING) {
                     $this->staticReflection[$lastSeenClass]['methods'][] = $tokens[$i+2][1];
@@ -611,7 +611,7 @@ public function __construct()
             // don't generate property if its already on the base class.
             $reflClass = new \ReflectionClass($this->getClassToExtend());
             if ($reflClass->hasProperty($property)) {
-                return true;
+                return TRUE;
             }
         }
 
@@ -628,7 +628,7 @@ public function __construct()
             $reflClass = new \ReflectionClass($this->getClassToExtend());
 
             if ($reflClass->hasMethod($method)) {
-                return true;
+                return TRUE;
             }
         }
 
@@ -640,12 +640,12 @@ public function __construct()
 
     private function hasNamespace(ClassMetadataInfo $metadata)
     {
-        return strpos($metadata->name, '\\') ? true : false;
+        return strpos($metadata->name, '\\') ? TRUE : FALSE;
     }
 
     private function extendsClass()
     {
-        return $this->classToExtend ? true : false;
+        return $this->classToExtend ? TRUE : FALSE;
     }
 
     private function getClassToExtend()
@@ -801,7 +801,7 @@ public function __construct()
 
         foreach ($metadata->associationMappings as $associationMapping) {
             if ($associationMapping['type'] & ClassMetadataInfo::TO_ONE) {
-                $nullable = $this->isAssociationIsNullable($associationMapping) ? 'null' : null;
+                $nullable = $this->isAssociationIsNullable($associationMapping) ? 'null' : NULL;
                 if ($code = $this->generateEntityStubMethod($metadata, 'set', $associationMapping['fieldName'], $associationMapping['targetEntity'], $nullable)) {
                     $methods[] = $code;
                 }
@@ -827,7 +827,7 @@ public function __construct()
     private function isAssociationIsNullable($associationMapping)
     {
         if (isset($associationMapping['id']) && $associationMapping['id']) {
-            return false;
+            return FALSE;
         }
 
         if (isset($associationMapping['joinColumns'])) {
@@ -839,11 +839,11 @@ public function __construct()
 
         foreach ($joinColumns as $joinColumn) {
             if(isset($joinColumn['nullable']) && !$joinColumn['nullable']) {
-                return false;
+                return FALSE;
             }
         }
 
-        return true;
+        return TRUE;
     }
 
     private function generateEntityLifecycleCallbackMethods(ClassMetadataInfo $metadata)
@@ -876,7 +876,7 @@ public function __construct()
 
             $lines[] = $this->generateAssociationMappingPropertyDocBlock($associationMapping, $metadata);
             $lines[] = $this->spaces . $this->fieldVisibility . ' $' . $associationMapping['fieldName']
-                     . ($associationMapping['type'] == 'manyToMany' ? ' = array()' : null) . ";\n";
+                     . ($associationMapping['type'] == 'manyToMany' ? ' = array()' : NULL) . ";\n";
         }
 
         return implode("\n", $lines);
@@ -894,13 +894,13 @@ public function __construct()
 
             $lines[] = $this->generateFieldMappingPropertyDocBlock($fieldMapping, $metadata);
             $lines[] = $this->spaces . $this->fieldVisibility . ' $' . $fieldMapping['fieldName']
-                     . (isset($fieldMapping['default']) ? ' = ' . var_export($fieldMapping['default'], true) : null) . ";\n";
+                     . (isset($fieldMapping['default']) ? ' = ' . var_export($fieldMapping['default'], TRUE) : NULL) . ";\n";
         }
 
         return implode("\n", $lines);
     }
 
-    private function generateEntityStubMethod(ClassMetadataInfo $metadata, $type, $fieldName, $typeHint = null,  $defaultValue = null)
+    private function generateEntityStubMethod(ClassMetadataInfo $metadata, $type, $fieldName, $typeHint = NULL,  $defaultValue = NULL)
     {
         $methodName = $type . Inflector::classify($fieldName);
         if (in_array($type, array("add", "remove")) && substr($methodName, -1) == "s") {
@@ -916,8 +916,11 @@ public function __construct()
         $template = self::$$var;
 
         $types          = Type::getTypesMap();
-        $variableType   = $typeHint ? $this->getType($typeHint) . ' ' : null;
-        $methodTypeHint = $typeHint && ! isset($types[$typeHint]) ? '\\' . $typeHint . ' ' : null;
+        $variableType   = $typeHint ? $this->getType($typeHint) . ' ' : NULL;
+        if ($typeHint . ' ' == $variableType && !isset($types[$typeHint]) && $typeHint{0} != '\\') {
+            $variableType = '\\' . $variableType;
+        }
+        $methodTypeHint = $typeHint && ! isset($types[$typeHint]) ? '\\' . $typeHint . ' ' : NULL;
 
         $replacements = array(
           '<description>'       => ucfirst($type) . ' ' . $fieldName,
@@ -926,7 +929,7 @@ public function __construct()
           '<variableName>'      => Inflector::camelize($fieldName),
           '<methodName>'        => $methodName,
           '<fieldName>'         => $fieldName,
-          '<variableDefault>'   => ($defaultValue !== null ) ? (' = '.$defaultValue) : '',
+          '<variableDefault>'   => ($defaultValue !== NULL ) ? (' = '.$defaultValue) : '',
           '<entity>'            => $this->getClassName($metadata)
         );
 
@@ -1013,7 +1016,7 @@ public function __construct()
                 }
             }
 
-            $type = null;
+            $type = NULL;
             switch ($associationMapping['type']) {
                 case ClassMetadataInfo::ONE_TO_ONE:
                     $type = 'OneToOne';
@@ -1159,7 +1162,7 @@ public function __construct()
             }
 
             if (isset($fieldMapping['nullable'])) {
-                $column[] = 'nullable=' .  var_export($fieldMapping['nullable'], true);
+                $column[] = 'nullable=' .  var_export($fieldMapping['nullable'], TRUE);
             }
 
             if (isset($fieldMapping['columnDefinition'])) {
@@ -1167,7 +1170,7 @@ public function __construct()
             }
 
             if (isset($fieldMapping['unique'])) {
-                $column[] = 'unique=' . var_export($fieldMapping['unique'], true);
+                $column[] = 'unique=' . var_export($fieldMapping['unique'], TRUE);
             }
 
             $lines[] = $this->spaces . ' * @' . $this->annotationsPrefix . 'Column(' . implode(', ', $column) . ')';
